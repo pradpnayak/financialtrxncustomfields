@@ -19,7 +19,7 @@ class CRM_FinancialTrxnCustomFields_Utils {
     }
   }
 
-  private function copyNegateCustomData($fIds) {
+  private static function copyNegateCustomData($fIds) {
     $negateFtId = array_pop($fIds);
     $oldFtId = array_pop($fIds);
     try {

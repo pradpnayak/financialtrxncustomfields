@@ -131,6 +131,63 @@ function financialtrxncustomfields_civicrm_managed(&$entities) {
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_buildForm
  */
 function financialtrxncustomfields_civicrm_buildForm($formName, &$form) {
+  if ('CRM_Contribute_Form_AdditionalPayment' == $formName) {
+    if (!CRM_Core_Permission::check('delete financial payments')) {
+      return;
+    }
+
+    $payments = $form->get_template_vars('payments') ?? [];
+
+    foreach ($payments as &$payment) {
+      if (empty($payment['action'])) {
+        $payment['action'] = '';
+      }
+      $payment['action'] .= ' <span><a href="#" onClick = "return false" data-id="';
+      $payment['action'] .= $payment['id'] . '" class="payment_delete action-item crm-hover-button no-popup" title="';
+      $payment['action'] .= ts('Delete Payment') . '" ><i aria-hidden="true" class="crm-i fa-trash"></i><span class="sr-only">';
+      $payment['action'] .= ts('Delete Payment') . '</span></a></span>';
+    }
+    $form->assign('payments', $payments);
+    Civi::resources()->addScriptUrl("//cdn.jsdelivr.net/npm/sweetalert2@11");
+    Civi::resources()->addScript("
+      CRM.$(function($) {
+        $('a.payment_delete').click(function () {
+          let paymentId = $(this).attr('data-id');
+          if (paymentId !== undefined) {
+            let elContainer = $(this).closest('.crm-ajax-container');
+            Swal.fire({
+              title: ts('Do you want to delete the payment?'),
+              showCancelButton: true,
+              confirmButtonText: ts('Delete Payment'),
+            }).then((result) => {
+              if (result.isConfirmed) {
+                Swal.fire({
+                  title: 'Please wait',
+                  text: 'while we process your request...',
+                  allowOutsideClick: false,
+                  onBeforeOpen: () => {
+                    Swal.showLoading();
+                  },
+                }, '', false);
+
+                CRM.api3('FinancialTrxn', 'delete', {
+                  'id': paymentId
+                }).then(function(result) {
+                  // do something with result
+                  Swal.close();
+                  CRM.refreshParent(elContainer);
+                }, function(error) {
+                  // oops
+                  Swal.close();
+                });
+              }
+            })
+          }
+        });
+      });
+    ");
+  }
+
   if ('CRM_Financial_Form_PaymentEdit' == $formName) {
     CRM_FinancialTrxnCustomFields_Utils::$_fID = [
       $form->getVar('_id') => $form->getVar('_id'),
