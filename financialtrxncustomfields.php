@@ -131,7 +131,13 @@ function financialtrxncustomfields_civicrm_managed(&$entities) {
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_buildForm
  */
 function financialtrxncustomfields_civicrm_buildForm($formName, &$form) {
-  if ('CRM_Contribute_Form_AdditionalPayment' == $formName) {
+  if ('CRM_Contribute_Form_AdditionalPayment' == $formName
+    && $form->getVar('_view') == 'transaction'
+  ) {
+    if (!Civi::settings()->get('financialtrxncustomfields_delete_payment')) {
+      return;
+    }
+
     if (!CRM_Core_Permission::check('delete financial payments')) {
       return;
     }
@@ -188,15 +194,33 @@ function financialtrxncustomfields_civicrm_buildForm($formName, &$form) {
     ");
   }
 
-  if ('CRM_Financial_Form_PaymentEdit' == $formName) {
-    CRM_FinancialTrxnCustomFields_Utils::$_fID = [
-      $form->getVar('_id') => $form->getVar('_id'),
-    ];
+  if (in_array($formName, ['CRM_Contribute_Form_AdditionalPayment', 'CRM_Financial_Form_PaymentEdit'])) {
+    if ('CRM_Contribute_Form_AdditionalPayment' == $formName
+      && $form->getVar('_view') == 'transaction'
+    ) {
+      return;
+    }
+    $block = 'page-body';
+    if ('CRM_Financial_Form_PaymentEdit' == $formName) {
+      CRM_FinancialTrxnCustomFields_Utils::$_fID = [
+        $form->getVar('_id') => $form->getVar('_id'),
+      ];
+      $form->assign('entityID', $form->getVar('_id'));
+      $block = 'payment-edit-block';
+    }
 
     $form->assign('customDataType', 'FinancialTrxn');
-    $form->assign('entityID', $form->getVar('_id'));
 
-    CRM_Core_Region::instance('payment-edit-block')->add([
+    if ('CRM_Contribute_Form_AdditionalPayment' == $formName) {
+      Civi::resources()->addScript("
+        CRM.$(function($) {
+          $('#customData').insertAfter('#paymentDetails_Information');
+        });
+      ");
+    }
+
+
+    CRM_Core_Region::instance($block)->add([
       'template' => 'CRM/common/customDataBlock.tpl',
     ]);
   }
@@ -213,7 +237,7 @@ function financialtrxncustomfields_civicrm_buildForm($formName, &$form) {
  * @link https://docs.civicrm.org/dev/en/latest/hooks/hook_civicrm_postProcess
  */
 function financialtrxncustomfields_civicrm_postProcess($formName, &$form) {
-  if ('CRM_Financial_Form_PaymentEdit' == $formName) {
+  if (in_array($formName, ['CRM_Contribute_Form_AdditionalPayment', 'CRM_Financial_Form_PaymentEdit'])) {
     CRM_FinancialTrxnCustomFields_Utils::processCustomFields($form->_submitValues);
   }
 }
