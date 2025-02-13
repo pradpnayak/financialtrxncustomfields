@@ -225,7 +225,7 @@ function financialtrxncustomfields_civicrm_preProcess($formName, &$form) {
  */
 function financialtrxncustomfields_civicrm_permission(&$permissions) {
   $permissions['delete financial payments'] = [
-    E::ts('Payments: Delete Payments'),
-    E::ts('Warning: Give to trusted roles only; Permission to delete financial payments. '),
+    'label' => E::ts('Payments: Delete Payments'),
+    'description' => E::ts('Warning: Give to trusted roles only; Permission to delete financial payments. '),
   ];
 }
